@@ -1,0 +1,756 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Callsign Card Generator — Radioaficionados</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@600;700&family=Rajdhani:wght@400;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg: #f0f4f8; --card: #fff; --border: #e2e8f0;
+  --dark: #1e293b; --muted: #64748b; --accent: #2563eb;
+}
+body { font-family: system-ui,-apple-system,'Segoe UI',sans-serif; background:var(--bg); color:var(--dark); min-height:100vh; }
+.font-pre { position:absolute; opacity:0; pointer-events:none; top:-999px; }
+header {
+  background:var(--dark); color:#fff; padding:1.25rem 2rem;
+  display:flex; align-items:center; gap:1rem; border-bottom:3px solid #f59e0b;
+}
+header .icon { font-size:1.75rem; line-height:1; }
+header h1 { font-size:1.2rem; font-weight:700; letter-spacing:-.01em; }
+header p { font-size:.8rem; color:#94a3b8; margin-top:.1rem; }
+.container { max-width:1060px; margin:0 auto; padding:2rem 1rem 3rem; }
+.layout { display:grid; grid-template-columns:275px 1fr; gap:1.5rem; }
+@media (max-width:720px) { .layout { grid-template-columns:1fr; } }
+.panel { background:var(--card); border-radius:1rem; border:1px solid var(--border); padding:1.25rem; height:fit-content; }
+.panel-title { font-size:.7rem; font-weight:700; text-transform:uppercase; letter-spacing:.08em; color:var(--muted); margin-bottom:1rem; padding-bottom:.5rem; border-bottom:1px solid var(--border); }
+.field { margin-bottom:.7rem; position:relative; }
+.field label { display:block; font-size:.78rem; font-weight:600; color:var(--muted); margin-bottom:.22rem; }
+.field input {
+  width:100%; border:1px solid var(--border); border-radius:.5rem;
+  padding:.42rem .65rem; font-size:.9rem; outline:none;
+  transition:border-color .15s,box-shadow .15s; background:#fafafa;
+}
+.field input:focus { border-color:var(--accent); box-shadow:0 0 0 3px rgba(37,99,235,.1); background:#fff; }
+.field input.upper { text-transform:uppercase; }
+.field input.autofilled { border-color:#10b981; background:#f0fdf4; }
+.auto-tag {
+  position:absolute; right:8px; top:50%; transform:translateY(-50%);
+  font-size:.6rem; font-weight:700; color:#fff; background:#10b981;
+  padding:1px 5px; border-radius:4px; pointer-events:none; letter-spacing:.04em;
+}
+.preview-panel { display:flex; flex-direction:column; gap:1rem; }
+.tabs { display:flex; gap:.4rem; flex-wrap:wrap; }
+.tab {
+  padding:.4rem .9rem; border-radius:.5rem; border:1.5px solid var(--border);
+  background:var(--card); font-size:.82rem; font-weight:600; cursor:pointer;
+  transition:all .15s; color:var(--muted); white-space:nowrap;
+}
+.tab:hover { border-color:var(--dark); color:var(--dark); }
+.tab.active { background:var(--dark); color:#fff; border-color:var(--dark); }
+.canvas-area {
+  background:#dde3ea; border-radius:.75rem; padding:1.5rem;
+  display:flex; flex-direction:column; align-items:center; gap:1rem;
+}
+.util-area {
+  background:var(--card); border-radius:.75rem; padding:1.5rem;
+  border:1px solid var(--border);
+}
+canvas { max-width:100%; border-radius:.5rem; box-shadow:0 6px 32px rgba(0,0,0,.2); display:block; }
+.dl-btn {
+  background:var(--dark); color:#fff; border:none; border-radius:.75rem;
+  padding:.6rem 1.5rem; font-size:.875rem; font-weight:700; cursor:pointer;
+  transition:background .15s,transform .1s; letter-spacing:.02em;
+}
+.dl-btn:hover { background:#0f172a; transform:translateY(-1px); }
+/* grid calculator */
+.gcalc { display:grid; grid-template-columns:1fr 1fr; gap:1.5rem; }
+@media (max-width:600px) { .gcalc { grid-template-columns:1fr; } }
+.gcalc-box { background:#f8fafc; border:1px solid var(--border); border-radius:.75rem; padding:1.25rem; }
+.gcalc-box h3 { font-size:.75rem; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); margin-bottom:.75rem; }
+.ginput { display:flex; gap:.5rem; margin-bottom:.75rem; }
+.ginput input {
+  flex:1; border:1px solid var(--border); border-radius:.5rem; padding:.42rem .65rem;
+  font-size:.9rem; font-family:'Share Tech Mono','Courier New',monospace; outline:none;
+  transition:border-color .15s; background:#fff;
+}
+.ginput input:focus { border-color:var(--accent); }
+.gbtn {
+  background:var(--dark); color:#fff; border:none; border-radius:.5rem;
+  padding:.42rem .9rem; font-size:.82rem; font-weight:700; cursor:pointer; white-space:nowrap;
+}
+.gbtn:hover { background:#0f172a; }
+.gresult { font-size:.85rem; line-height:2; }
+.gresult .row { display:flex; gap:.5rem; align-items:baseline; }
+.gresult .lbl { color:var(--muted); font-size:.75rem; font-weight:600; min-width:80px; }
+.gresult .val { font-family:'Share Tech Mono','Courier New',monospace; font-weight:700; color:var(--dark); }
+.gresult .val.big { font-size:1.2rem; color:var(--accent); }
+.gdist { margin-top:1.5rem; background:#f8fafc; border:1px solid var(--border); border-radius:.75rem; padding:1.25rem; }
+.gdist h3 { font-size:.75rem; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); margin-bottom:.75rem; }
+.gdist .inputs { display:flex; gap:.5rem; flex-wrap:wrap; align-items:center; }
+.gdist input {
+  width:110px; border:1px solid var(--border); border-radius:.5rem; padding:.4rem .6rem;
+  font-size:.9rem; font-family:'Share Tech Mono','Courier New',monospace; outline:none;
+  transition:border-color .15s; background:#fff;
+}
+.gdist input:focus { border-color:var(--accent); }
+.dist-result { margin-top:.75rem; font-size:.9rem; font-weight:700; color:var(--dark); }
+.dist-result span { color:var(--accent); }
+.glink { font-size:.75rem; color:var(--accent); text-decoration:underline; }
+footer { text-align:center; padding:2rem 1rem; color:var(--muted); font-size:.75rem; }
+footer a { color:var(--muted); }
+</style>
+</head>
+<body>
+<span class="font-pre" style="font-family:'Oswald';font-weight:700">X</span>
+<span class="font-pre" style="font-family:'Rajdhani';font-weight:700">X</span>
+<span class="font-pre" style="font-family:'Share Tech Mono'">X</span>
+
+<header>
+  <div class="icon">📡</div>
+  <div>
+    <h1>Callsign Card Generator</h1>
+    <p>Ingresá tu indicativo — se detecta país y provincia automáticamente</p>
+  </div>
+</header>
+
+<div class="container">
+  <div class="layout">
+
+    <!-- ── Form ── -->
+    <div class="panel">
+      <div class="panel-title">Datos del operador</div>
+      <div class="field">
+        <label>Indicativo *</label>
+        <input id="f-cs" class="upper" type="text" placeholder="LU2MCA" maxlength="12"
+               oninput="this.value=this.value.toUpperCase();onCallsignInput();redraw()">
+      </div>
+      <div class="field" id="wrap-country">
+        <label>País</label>
+        <input id="f-country" type="text" placeholder="Argentina" value="" oninput="clearAuto('country');redraw()">
+      </div>
+      <div class="field" id="wrap-qth">
+        <label>Ciudad / Provincia</label>
+        <input id="f-qth" type="text" placeholder="Mendoza" oninput="clearAuto('qth');redraw()">
+      </div>
+      <div class="field">
+        <label>Nombre</label>
+        <input id="f-name" type="text" placeholder="Carlos Mammoli" oninput="redraw()">
+      </div>
+      <div class="field">
+        <label>Grid Locator</label>
+        <input id="f-grid" class="upper" type="text" placeholder="FF56nv" maxlength="8"
+               oninput="this.value=this.value.toUpperCase();redraw()">
+      </div>
+      <div class="field">
+        <label>DMR-ID</label>
+        <input id="f-dmrid" type="text" placeholder="7221084" maxlength="10" oninput="redraw()">
+      </div>
+      <div class="field">
+        <label>Modos / Bandas</label>
+        <input id="f-modes" type="text" placeholder="DMR · VHF/UHF" oninput="redraw()">
+      </div>
+    </div>
+
+    <!-- ── Preview ── -->
+    <div class="preview-panel">
+      <div class="tabs">
+        <button class="tab active"  onclick="switchTab('plate',  this)">🪪 Patente</button>
+        <button class="tab"         onclick="switchTab('qsl',    this)">📻 QSL Header</button>
+        <button class="tab"         onclick="switchTab('idcard', this)">🪪 ID Card</button>
+        <button class="tab"         onclick="switchTab('banner', this)">📲 Banner</button>
+        <button class="tab"         onclick="switchTab('grid',   this)">📍 Grid &amp; Zonas</button>
+      </div>
+
+      <div id="view-plate"  class="canvas-area">
+        <canvas id="canvas-plate"></canvas>
+        <button class="dl-btn" onclick="doDownload('plate')">⬇ Descargar PNG</button>
+      </div>
+      <div id="view-qsl"    class="canvas-area" style="display:none">
+        <canvas id="canvas-qsl"></canvas>
+        <button class="dl-btn" onclick="doDownload('qsl')">⬇ Descargar PNG</button>
+      </div>
+      <div id="view-idcard" class="canvas-area" style="display:none">
+        <canvas id="canvas-idcard"></canvas>
+        <button class="dl-btn" onclick="doDownload('idcard')">⬇ Descargar PNG</button>
+      </div>
+      <div id="view-banner" class="canvas-area" style="display:none">
+        <canvas id="canvas-banner"></canvas>
+        <button class="dl-btn" onclick="doDownload('banner')">⬇ Descargar PNG</button>
+      </div>
+
+      <!-- ── Grid & Zonas ── -->
+      <div id="view-grid" class="util-area" style="display:none">
+        <div class="gcalc">
+          <!-- Col 1: coords → grid -->
+          <div class="gcalc-box">
+            <h3>Coordenadas → Grid</h3>
+            <div class="ginput">
+              <input id="g-lat" type="number" step="any" placeholder="Latitud  (-33.10)">
+            </div>
+            <div class="ginput">
+              <input id="g-lon" type="number" step="any" placeholder="Longitud (-68.85)">
+              <button class="gbtn" onclick="calcFromCoords()">Calcular →</button>
+            </div>
+            <div id="g-res-coords" class="gresult" style="display:none">
+              <div class="row"><span class="lbl">Grid 4</span> <span class="val big" id="g-grid4">—</span></div>
+              <div class="row"><span class="lbl">Grid 6</span> <span class="val big" id="g-grid6">—</span></div>
+              <div class="row"><span class="lbl">Zona CQ</span>  <span class="val" id="g-cq">—</span></div>
+              <div class="row"><span class="lbl">Zona ITU</span> <span class="val" id="g-itu">—</span></div>
+              <div class="row"><span class="lbl">Field</span>    <span class="val" id="g-field">—</span></div>
+              <div class="row" style="margin-top:.5rem">
+                <a id="g-maps-link" class="glink" target="_blank" rel="noreferrer">Ver en Google Maps ↗</a>
+              </div>
+              <div class="row" style="margin-top:.25rem">
+                <button class="gbtn" style="font-size:.75rem;padding:.3rem .7rem" onclick="useGridInForm()">→ Usar en el formulario</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Col 2: grid → coords -->
+          <div class="gcalc-box">
+            <h3>Grid → Coordenadas</h3>
+            <div class="ginput">
+              <input id="g-grid-in" class="upper" type="text" placeholder="FF56nv" maxlength="8"
+                     oninput="this.value=this.value.toUpperCase()">
+              <button class="gbtn" onclick="calcFromGrid()">Calcular →</button>
+            </div>
+            <div id="g-res-grid" class="gresult" style="display:none">
+              <div class="row"><span class="lbl">Latitud</span>  <span class="val" id="g-lat-out">—</span></div>
+              <div class="row"><span class="lbl">Longitud</span> <span class="val" id="g-lon-out">—</span></div>
+              <div class="row"><span class="lbl">Zona CQ</span>  <span class="val" id="g-cq2">—</span></div>
+              <div class="row"><span class="lbl">Zona ITU</span> <span class="val" id="g-itu2">—</span></div>
+              <div class="row"><span class="lbl">Campo</span>    <span class="val" id="g-field2">—</span></div>
+              <div class="row" style="margin-top:.5rem">
+                <a id="g-maps-link2" class="glink" target="_blank" rel="noreferrer">Ver en Google Maps ↗</a>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Distancia entre grids -->
+        <div class="gdist">
+          <h3>Distancia entre dos grids</h3>
+          <div class="inputs">
+            <input id="d-grid1" class="upper" type="text" placeholder="FF56nv" maxlength="8"
+                   oninput="this.value=this.value.toUpperCase()">
+            <span style="color:var(--muted);font-size:.9rem">→</span>
+            <input id="d-grid2" class="upper" type="text" placeholder="GG25ob" maxlength="8"
+                   oninput="this.value=this.value.toUpperCase()">
+            <button class="gbtn" onclick="calcDist()">Calcular</button>
+          </div>
+          <div id="d-result" class="dist-result" style="display:none"></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<footer>
+  Herramienta libre para la comunidad de radioaficionados · 73 de
+  <a href="https://mammoli.ar/lu2mca/" target="_blank">LU2MCA</a> ·
+  <a href="https://mammoli.ar" target="_blank">mammoli.ar</a>
+</footer>
+
+<script>
+'use strict';
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Detección de indicativo
+// ─────────────────────────────────────────────────────────────────────────────
+
+// country: [name_es, cq_zone, itu_zone]
+const PREFIX_MAP = [
+  // Prefijos más largos primero (evita match parcial)
+  ['LU','Argentina',13,14], ['LW','Argentina',13,14], ['LV','Argentina',13,14],
+  ['LT','Argentina',13,14], ['LP','Argentina',13,14], ['LO','Argentina',13,14],
+  ['AY','Argentina',13,14],
+  ['PY','Brasil',11,15],    ['PP','Brasil',11,15],    ['PU','Brasil',11,15],
+  ['PT','Brasil',11,15],
+  ['CE','Chile',12,14],     ['CA','Chile',12,14],     ['CB','Chile',12,14],
+  ['CC','Chile',12,14],     ['CD','Chile',12,14],     ['XQ','Chile',12,14],
+  ['CX','Uruguay',13,14],   ['CV','Uruguay',13,14],
+  ['ZP','Paraguay',11,14],
+  ['OA','Perú',10,14],      ['OB','Perú',10,14],      ['OC','Perú',10,14],
+  ['HJ','Colombia',9,12],   ['HK','Colombia',9,12],
+  ['HC','Ecuador',10,12],   ['HD','Ecuador',10,12],
+  ['YV','Venezuela',9,12],  ['YX','Venezuela',9,12],
+  ['CP','Bolivia',10,14],
+  ['ZL','Nueva Zelanda',32,60],
+  ['VK','Australia',29,55],
+  ['JA','Japón',25,45],
+  ['DL','Alemania',14,28],  ['DA','Alemania',14,28],
+  ['VE','Canadá',2,3],      ['VA','Canadá',2,3],
+  ['XE','México',7,10],
+  ['F', 'Francia',14,27],
+  ['G', 'Reino Unido',14,27],['M','Reino Unido',14,27],
+  ['I', 'Italia',15,28],
+  ['EA','España',14,37],
+  ['UA','Rusia',16,30],     ['RA','Rusia',16,30],
+  ['ZS','Sudáfrica',38,57], ['ZR','Sudáfrica',38,57],
+  ['PY','Brasil',11,15],
+  ['W', 'Estados Unidos',5,8],
+  ['K', 'Estados Unidos',5,8],
+  ['N', 'Estados Unidos',5,8],
+];
+
+// Para Argentina: la letra inmediatamente después del dígito indica la provincia
+// Confirmado: M = Mendoza (LU2MCA, LU3MXX, etc.)
+const AR_PROVINCE = {
+  'A': 'Buenos Aires',   // Buenos Aires AMBA
+  'B': 'Buenos Aires',
+  'C': 'Córdoba',
+  'D': 'Buenos Aires',
+  'E': 'Entre Ríos',
+  'F': 'Santa Fe',
+  'G': 'Santiago del Estero',
+  'H': 'Chaco',
+  'I': 'Misiones',
+  'J': 'San Juan',
+  'K': 'Catamarca',
+  'L': 'La Rioja',
+  'M': 'Mendoza',
+  'N': 'Neuquén',
+  'O': null,
+  'P': 'La Pampa',
+  'Q': 'San Luis',
+  'R': 'Río Negro',
+  'S': 'Salta',
+  'T': 'Tucumán',
+  'U': 'Corrientes',
+  'V': 'Tierra del Fuego',
+  'W': null,
+  'X': 'Formosa',
+  'Y': 'Jujuy',
+  'Z': 'Santa Cruz',
+};
+
+// Fields that were auto-filled — used to know if we should re-fill or respect user edit
+const autoFilled = { country: false, qth: false };
+
+function onCallsignInput() {
+  const cs = document.getElementById('f-cs').value.toUpperCase().trim();
+  if (!cs) return;
+
+  // Find longest matching prefix
+  let match = null;
+  for (const [pfx, country, cq, itu] of PREFIX_MAP) {
+    if (cs.startsWith(pfx) && (!match || pfx.length > match[0].length)) {
+      match = [pfx, country, cq, itu];
+    }
+  }
+  if (!match) return;
+
+  const [pfx, country] = match;
+
+  // Auto-fill country if not manually edited
+  if (!autoFilled.country || document.getElementById('f-country').value === '') {
+    setAuto('f-country', 'country', country);
+  }
+
+  // Argentine province detection
+  if (['LU','LW','LV','LT','LP','LO','AY'].includes(pfx) && cs.length >= 4) {
+    // Format: LU + digit + letter(s)  →  4th char is the province letter
+    const provinceLetter = cs[3]; // e.g. LU2MCA → 'M'
+    const province = AR_PROVINCE[provinceLetter] || null;
+    if (province && (!autoFilled.qth || document.getElementById('f-qth').value === '')) {
+      setAuto('f-qth', 'qth', province);
+    }
+  }
+}
+
+function setAuto(inputId, key, value) {
+  const el = document.getElementById(inputId);
+  el.value = value;
+  el.classList.add('autofilled');
+  autoFilled[key] = true;
+  // Show auto tag
+  let tag = document.getElementById('autotag-'+key);
+  if (!tag) {
+    tag = document.createElement('span');
+    tag.id = 'autotag-'+key;
+    tag.className = 'auto-tag';
+    tag.textContent = 'AUTO';
+    el.parentNode.appendChild(tag);
+  }
+  tag.style.display = '';
+}
+
+function clearAuto(key) {
+  autoFilled[key] = false;
+  const inputId = key === 'country' ? 'f-country' : 'f-qth';
+  document.getElementById(inputId).classList.remove('autofilled');
+  const tag = document.getElementById('autotag-'+key);
+  if (tag) tag.style.display = 'none';
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Tabs / routing
+// ─────────────────────────────────────────────────────────────────────────────
+const VIEWS = ['plate','qsl','idcard','banner','grid'];
+let curTab = 'plate';
+
+function switchTab(tab, btn) {
+  curTab = tab;
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  btn.classList.add('active');
+  VIEWS.forEach(v => document.getElementById('view-'+v).style.display = v===tab ? '' : 'none');
+  if (tab !== 'grid') redraw();
+}
+
+function gv(id) { return document.getElementById(id).value.trim(); }
+
+function getData() {
+  return {
+    cs:      gv('f-cs').toUpperCase() || 'XX0XXX',
+    name:    gv('f-name'),
+    qth:     gv('f-qth'),
+    country: gv('f-country') || 'Argentina',
+    grid:    gv('f-grid').toUpperCase(),
+    dmrid:   gv('f-dmrid'),
+    modes:   gv('f-modes'),
+  };
+}
+
+function redraw() {
+  const d = getData();
+  ({plate:drawPlate,qsl:drawQSL,idcard:drawIDCard,banner:drawBanner})[curTab]?.(d);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PATENTE ARGENTINA
+// ─────────────────────────────────────────────────────────────────────────────
+function drawPlate(d) {
+  const [W,H,S]=[760,240,2], cv=setup('canvas-plate',W,H,S), ctx=cv.getContext('2d');
+  ctx.scale(S,S);
+  ctx.fillStyle='#F8F8F8'; rrect(ctx,0,0,W,H,14); ctx.fill();
+  ctx.strokeStyle='#111'; ctx.lineWidth=6; rrect(ctx,3,3,W-6,H-6,12); ctx.stroke();
+  const SW=72, g=ctx.createLinearGradient(0,0,SW,0);
+  g.addColorStop(0,'#002B7F'); g.addColorStop(1,'#003DA5');
+  ctx.fillStyle=g; rrectLeft(ctx,5,5,SW,H-10,10); ctx.fill();
+  ctx.fillStyle='rgba(255,255,255,.5)';
+  for (const sy of [H*.17,H*.32,H*.5,H*.68,H*.83]) star(ctx,SW/2,sy,5,7,3);
+  ctx.save(); ctx.translate(SW/2,H/2); ctx.rotate(-Math.PI/2);
+  ctx.fillStyle='rgba(255,255,255,.78)'; ctx.font="700 10px 'Oswald',Arial";
+  ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText('M E R C O S U R',0,0); ctx.restore();
+  const fy=H-28,fh=4;
+  ctx.fillStyle='#74ACDF'; ctx.fillRect(7,fy,SW-9,fh);
+  ctx.fillStyle='#FFF'; ctx.fillRect(7,fy+fh,SW-9,fh);
+  ctx.fillStyle='#74ACDF'; ctx.fillRect(7,fy+fh*2,SW-9,fh);
+  const MX=SW+14, MAW=W-MX-10;
+  ctx.fillStyle='#002B7F'; ctx.font="700 17px 'Oswald',Arial";
+  ctx.textAlign='center'; ctx.textBaseline='top'; ctx.fillText('A R G E N T I N A',MX+MAW/2,13);
+  ctx.strokeStyle='#002B7F'; ctx.lineWidth=1.5; const lY=34;
+  line(ctx,MX+8,lY,MX+MAW/2-80,lY); line(ctx,MX+MAW/2+80,lY,MX+MAW-8,lY);
+  let fs=108; ctx.font=`700 ${fs}px 'Oswald',Arial`;
+  while(ctx.measureText(d.cs).width>MAW-20&&fs>36) ctx.font=`700 ${--fs}px 'Oswald',Arial`;
+  ctx.fillStyle='#111'; ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillText(d.cs,MX+MAW/2,(lY+(H-20))/2+6);
+  const bot=['RADIOAFICIONADO'];
+  if(d.qth) bot.push(d.qth.toUpperCase()); if(d.grid) bot.push(d.grid);
+  ctx.fillStyle='#333'; ctx.font="600 13px 'Oswald',Arial";
+  ctx.textAlign='center'; ctx.textBaseline='bottom'; ctx.fillText(bot.join('  ·  '),MX+MAW/2,H-12);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// QSL HEADER
+// ─────────────────────────────────────────────────────────────────────────────
+function drawQSL(d) {
+  const [W,H,S]=[760,320,2], cv=setup('canvas-qsl',W,H,S), ctx=cv.getContext('2d');
+  ctx.scale(S,S);
+  const bg=ctx.createLinearGradient(0,0,W,H);
+  bg.addColorStop(0,'#07111f'); bg.addColorStop(.5,'#0d1b2e'); bg.addColorStop(1,'#060f1c');
+  ctx.fillStyle=bg; rrect(ctx,0,0,W,H,12); ctx.fill();
+  waves(ctx,52,H/2,6,'#1a3a5c',24); waves(ctx,W-52,H/2,6,'#1a3a5c',24);
+  const goldH=()=>{const g=ctx.createLinearGradient(0,0,W,0);g.addColorStop(0,'rgba(0,0,0,0)');g.addColorStop(.12,'#BFA040');g.addColorStop(.88,'#BFA040');g.addColorStop(1,'rgba(0,0,0,0)');return g;};
+  ctx.fillStyle=goldH(); ctx.fillRect(0,11,W,3); ctx.fillRect(0,H-14,W,3);
+  ctx.strokeStyle='rgba(191,160,64,.35)'; ctx.lineWidth=2; rrect(ctx,1,1,W-2,H-2,12); ctx.stroke();
+  ctx.fillStyle='rgba(191,160,64,.22)'; ctx.font="700 12px 'Oswald',monospace";
+  ctx.textAlign='center'; ctx.textBaseline='top'; ctx.fillText(`CQ  CQ  CQ  DE  ${d.cs}  CQ  CQ  CQ`,W/2,22);
+  let csFs=100; ctx.font=`700 ${csFs}px 'Oswald',Arial`;
+  while(ctx.measureText(d.cs).width>W-180&&csFs>36) ctx.font=`700 ${--csFs}px 'Oswald',Arial`;
+  ctx.shadowColor='rgba(240,192,48,.55)'; ctx.shadowBlur=22;
+  ctx.fillStyle='#F0C030'; ctx.textAlign='center'; ctx.textBaseline='top'; ctx.fillText(d.cs,W/2,40); ctx.shadowBlur=0;
+  let y=40+csFs+6;
+  if(d.name){ctx.fillStyle='#E2E8F0';ctx.font=`600 21px 'Rajdhani',Arial`;ctx.textAlign='center';ctx.textBaseline='top';ctx.fillText(d.name,W/2,y);y+=28;}
+  const qthL=[d.qth,d.country&&d.country!==d.qth?d.country:'',d.grid?'Grid: '+d.grid:''].filter(Boolean);
+  if(qthL.length){ctx.fillStyle='#8BA8C4';ctx.font=`600 15px 'Rajdhani',Arial`;ctx.textAlign='center';ctx.textBaseline='top';ctx.fillText(qthL.join('  ·  '),W/2,y);y+=22;}
+  const techL=[d.dmrid?'DMR-ID: '+d.dmrid:'',d.modes].filter(Boolean);
+  if(techL.length){ctx.fillStyle='#4A8FC8';ctx.font=`13px 'Share Tech Mono','Courier New',monospace`;ctx.textAlign='center';ctx.textBaseline='top';ctx.fillText(techL.join('  |  '),W/2,y);}
+  const sepY=Math.max(y+28,H-68);
+  ctx.strokeStyle='rgba(191,160,64,.3)'; ctx.lineWidth=1; line(ctx,60,sepY,W-60,sepY);
+  const fy=sepY+12;
+  ctx.fillStyle='rgba(191,160,64,.5)'; ctx.font="700 11px 'Oswald',Arial";
+  const labs=['TO RADIO','DATE','TIME UTC','BAND / FREQ','MODE','RST'];
+  const lxs=[62,175,300,430,580,690];
+  labs.forEach((l,i)=>{ctx.textAlign='left';ctx.textBaseline='top';ctx.fillText(l,lxs[i],fy);});
+  ctx.strokeStyle='rgba(255,255,255,.2)'; ctx.lineWidth=1;
+  [[62,168],[175,290],[300,420],[430,572],[580,682],[690,750]].forEach(([x1,x2])=>line(ctx,x1,fy+20,x2,fy+20));
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ID CARD
+// ─────────────────────────────────────────────────────────────────────────────
+function drawIDCard(d) {
+  const [W,H,S]=[680,400,2], cv=setup('canvas-idcard',W,H,S), ctx=cv.getContext('2d');
+  ctx.scale(S,S);
+  ctx.fillStyle='#F7F9FC'; rrect(ctx,0,0,W,H,14); ctx.fill();
+  ctx.strokeStyle='#1e293b'; ctx.lineWidth=4; rrect(ctx,2,2,W-4,H-4,13); ctx.stroke();
+  const LP=220, lpg=ctx.createLinearGradient(0,0,LP,H);
+  lpg.addColorStop(0,'#0f172a'); lpg.addColorStop(1,'#1a3358');
+  ctx.fillStyle=lpg; rrectLeft(ctx,4,4,LP-4,H-8,11); ctx.fill();
+  ctx.fillStyle='rgba(255,255,255,.55)'; ctx.font="700 9px 'Oswald',Arial";
+  ctx.textAlign='center'; ctx.textBaseline='top'; ctx.fillText('R A D I O A F I C I O N A D O',LP/2,16);
+  ctx.fillStyle='rgba(255,255,255,.35)'; ctx.font="600 8px 'Rajdhani',Arial";
+  ctx.fillText(d.country.toUpperCase(),LP/2,29);
+  let csFs=68; ctx.font=`700 ${csFs}px 'Oswald',Arial`;
+  while(ctx.measureText(d.cs).width>LP-16&&csFs>20) ctx.font=`700 ${--csFs}px 'Oswald',Arial`;
+  ctx.shadowColor='rgba(240,192,48,.45)'; ctx.shadowBlur=18;
+  ctx.fillStyle='#F0C030'; ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillText(d.cs,LP/2,H/2+5); ctx.shadowBlur=0;
+  waves(ctx,LP/2,H*.82,3,'rgba(255,255,255,.06)',20);
+  const ffy=H-26,ffh=4;
+  ctx.fillStyle='#74ACDF'; ctx.fillRect(5,ffy,LP-8,ffh);
+  ctx.fillStyle='#FFF'; ctx.fillRect(5,ffy+ffh,LP-8,ffh);
+  ctx.fillStyle='#74ACDF'; ctx.fillRect(5,ffy+ffh*2,LP-8,ffh);
+  ctx.strokeStyle='#e2e8f0'; ctx.lineWidth=1; line(ctx,LP,4,LP,H-4);
+  const RX=LP+18, RW=W-RX-14;
+  if(d.name){ctx.fillStyle='#1e293b';ctx.font=`700 20px 'Rajdhani',Arial`;ctx.textAlign='left';ctx.textBaseline='top';ctx.fillText(d.name,RX,18);}
+  ctx.strokeStyle='#e2e8f0'; ctx.lineWidth=1; line(ctx,RX,48,RX+RW,48);
+  const rows=[];
+  if(d.qth)   rows.push(['QTH',d.qth]);
+  if(d.country) rows.push(['PAÍS',d.country]);
+  if(d.grid)  rows.push(['GRID',d.grid]);
+  if(d.dmrid) rows.push(['DMR-ID',d.dmrid]);
+  if(d.modes) rows.push(['MODOS',d.modes]);
+  let ry=58;
+  for(const [lbl,val] of rows){
+    ctx.fillStyle='#94a3b8';ctx.font=`700 9px 'Oswald',Arial`;ctx.textAlign='left';ctx.textBaseline='top';ctx.fillText(lbl,RX,ry);
+    ctx.fillStyle='#1e293b';ctx.font=`600 15px 'Rajdhani',Arial`;ctx.fillText(val,RX,ry+11);ry+=36;
+  }
+  if(d.dmrid){
+    const bx=RX,by=H-74,bw=RW,bh=34;
+    ctx.fillStyle='#f1f5f9'; ctx.fillRect(bx-4,by-6,bw+8,bh+22);
+    drawBarcode(ctx,bx,by,bw,bh,d.dmrid);
+    ctx.fillStyle='#64748b';ctx.font=`10px 'Share Tech Mono','Courier New',monospace`;
+    ctx.textAlign='center';ctx.textBaseline='top';ctx.fillText(d.dmrid,bx+bw/2,by+bh+4);
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// BANNER
+// ─────────────────────────────────────────────────────────────────────────────
+function drawBanner(d) {
+  const [W,H,S]=[760,280,2], cv=setup('canvas-banner',W,H,S), ctx=cv.getContext('2d');
+  ctx.scale(S,S);
+  const bg=ctx.createLinearGradient(0,0,W,H);
+  bg.addColorStop(0,'#030b14'); bg.addColorStop(.6,'#071524'); bg.addColorStop(1,'#0a1e36');
+  ctx.fillStyle=bg; ctx.fillRect(0,0,W,H);
+  starfield(ctx,W,H,80,42);
+  waves(ctx,-10,H/2,9,'rgba(74,143,200,.12)',35);
+  drawAntenna(ctx,W-80,H+10,H*.85);
+  const fgH=ctx.createLinearGradient(0,0,W,0);
+  fgH.addColorStop(0,'rgba(0,0,0,0)'); fgH.addColorStop(.08,'#74ACDF');
+  fgH.addColorStop(.45,'#74ACDF'); fgH.addColorStop(.5,'#FFF');
+  fgH.addColorStop(.55,'#74ACDF'); fgH.addColorStop(.92,'#74ACDF'); fgH.addColorStop(1,'rgba(0,0,0,0)');
+  ctx.globalAlpha=.35; ctx.fillStyle=fgH; ctx.fillRect(0,0,W,5); ctx.fillRect(0,H-5,W,5); ctx.globalAlpha=1;
+  ctx.fillStyle='rgba(191,160,64,.5)'; ctx.font="600 13px 'Rajdhani',Arial";
+  ctx.textAlign='right'; ctx.textBaseline='top'; ctx.fillText('73 de',W-20,18);
+  const lineY=52;
+  const lg=ctx.createLinearGradient(0,0,W,0);
+  lg.addColorStop(0,'rgba(191,160,64,0)'); lg.addColorStop(.15,'rgba(191,160,64,.6)');
+  lg.addColorStop(.85,'rgba(191,160,64,.6)'); lg.addColorStop(1,'rgba(191,160,64,0)');
+  ctx.fillStyle=lg; ctx.fillRect(0,lineY,W,1.5);
+  let csFs=110; ctx.font=`700 ${csFs}px 'Oswald',Arial`;
+  while(ctx.measureText(d.cs).width>W-160&&csFs>36) ctx.font=`700 ${--csFs}px 'Oswald',Arial`;
+  ctx.shadowColor='rgba(240,192,48,.6)'; ctx.shadowBlur=28;
+  ctx.fillStyle='#F0C030'; ctx.textAlign='center'; ctx.textBaseline='top';
+  ctx.fillText(d.cs,W/2,lineY+12); ctx.shadowBlur=0;
+  let y=lineY+12+csFs+4;
+  if(d.name){ctx.fillStyle='#dde6ef';ctx.font=`600 19px 'Rajdhani',Arial`;ctx.textAlign='center';ctx.textBaseline='top';ctx.fillText(d.name,W/2,y);y+=26;}
+  const loc=[d.qth,d.country&&d.country!==d.qth?d.country:'',d.grid||''].filter(Boolean);
+  if(loc.length){ctx.fillStyle='#7a9ab8';ctx.font=`600 14px 'Rajdhani',Arial`;ctx.textAlign='center';ctx.textBaseline='top';ctx.fillText(loc.join('  ·  '),W/2,y);y+=20;}
+  const tech=[d.dmrid?'DMR '+d.dmrid:'',d.modes].filter(Boolean);
+  if(tech.length){ctx.fillStyle='#3a7ab8';ctx.font=`12px 'Share Tech Mono','Courier New',monospace`;ctx.textAlign='center';ctx.textBaseline='top';ctx.fillText(tech.join('  |  '),W/2,y);}
+  ctx.fillStyle=lg; ctx.fillRect(0,H-53,W,1.5);
+  ctx.fillStyle='rgba(191,160,64,.25)'; ctx.font="600 10px 'Oswald',Arial";
+  ctx.textAlign='right'; ctx.textBaseline='bottom'; ctx.fillText('mammoli.ar/callsign-card',W-16,H-14);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// GRID LOCATOR CALCULATOR — Maidenhead
+// ─────────────────────────────────────────────────────────────────────────────
+function latLonToGrid(lat, lon, precision) {
+  lon += 180; lat += 90;
+  const A = 65; // 'A'
+  const f_lon = Math.floor(lon / 20);
+  const f_lat = Math.floor(lat / 10);
+  const s_lon = Math.floor((lon % 20) / 2);
+  const s_lat = Math.floor(lat % 10);
+  let grid = String.fromCharCode(A+f_lon) + String.fromCharCode(A+f_lat) + s_lon + s_lat;
+  if (precision >= 6) {
+    const ss_lon = Math.floor((lon % 2) * 12);
+    const ss_lat = Math.floor((lat % 1) * 24);
+    grid += String.fromCharCode(97+ss_lon) + String.fromCharCode(97+ss_lat); // lowercase
+  }
+  return grid;
+}
+
+function gridToLatLon(grid) {
+  const g = grid.toUpperCase();
+  if (g.length < 4) return null;
+  const A = 65;
+  const f_lon = g.charCodeAt(0) - A;
+  const f_lat = g.charCodeAt(1) - A;
+  if (f_lon < 0 || f_lon > 17 || f_lat < 0 || f_lat > 17) return null;
+  const s_lon = parseInt(g[2]);
+  const s_lat = parseInt(g[3]);
+  if (isNaN(s_lon) || isNaN(s_lat)) return null;
+  let lon = f_lon * 20 + s_lon * 2 - 180;
+  let lat = f_lat * 10 + s_lat * 1 - 90;
+  if (g.length >= 6) {
+    const ss_lon = g.charCodeAt(4) - 97;
+    const ss_lat = g.charCodeAt(5) - 97;
+    lon += ss_lon * (2/24) + (1/24);
+    lat += ss_lat * (1/24) + (0.5/24);
+  } else {
+    lon += 1; lat += 0.5; // center of 4-char square
+  }
+  return { lat: +lat.toFixed(6), lon: +lon.toFixed(6) };
+}
+
+function getZones(lat, lon) {
+  // CQ Zone: simplified — South America = 13; adjustments for extreme south
+  let cq = 13, itu = 14;
+  // ITU Zone approximation for South America
+  if (lat < -40) { itu = 16; } // Patagonia
+  if (lat > 12 && lon > -82) { cq = 9; itu = 12; } // northern SA / Caribbean
+  return { cq, itu };
+}
+
+function fieldName(lat, lon) {
+  const flon = String.fromCharCode(65 + Math.floor((lon+180)/20));
+  const flat  = String.fromCharCode(65 + Math.floor((lat+90)/10));
+  return flon + flat;
+}
+
+function haversine(lat1, lon1, lat2, lon2) {
+  const R = 6371, toRad = d => d * Math.PI / 180;
+  const dLat = toRad(lat2-lat1), dLon = toRad(lon2-lon1);
+  const a = Math.sin(dLat/2)**2 + Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*Math.sin(dLon/2)**2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+}
+
+function bearing(lat1, lon1, lat2, lon2) {
+  const toRad = d => d*Math.PI/180, toDeg = r => r*180/Math.PI;
+  const dLon = toRad(lon2-lon1);
+  const y = Math.sin(dLon)*Math.cos(toRad(lat2));
+  const x = Math.cos(toRad(lat1))*Math.sin(toRad(lat2)) - Math.sin(toRad(lat1))*Math.cos(toRad(lat2))*Math.cos(dLon);
+  return (toDeg(Math.atan2(y,x)) + 360) % 360;
+}
+
+function bearingLabel(deg) {
+  const dirs = ['N','NE','E','SE','S','SO','O','NO'];
+  return dirs[Math.round(deg/45)%8];
+}
+
+function calcFromCoords() {
+  const lat = parseFloat(document.getElementById('g-lat').value);
+  const lon = parseFloat(document.getElementById('g-lon').value);
+  if (isNaN(lat)||isNaN(lon)||lat<-90||lat>90||lon<-180||lon>180) {
+    alert('Coordenadas inválidas'); return;
+  }
+  const g4 = latLonToGrid(lat,lon,4);
+  const g6 = latLonToGrid(lat,lon,6);
+  const z  = getZones(lat,lon);
+  const f  = fieldName(lat,lon);
+  document.getElementById('g-grid4').textContent = g4;
+  document.getElementById('g-grid6').textContent = g6;
+  document.getElementById('g-cq').textContent  = 'Zona ' + z.cq;
+  document.getElementById('g-itu').textContent = 'Zona ' + z.itu;
+  document.getElementById('g-field').textContent = f + ' — ' + fieldDesc(f);
+  document.getElementById('g-maps-link').href = `https://www.google.com/maps?q=${lat},${lon}`;
+  document.getElementById('g-res-coords').style.display = '';
+  // Pre-fill distance grid A
+  document.getElementById('d-grid1').value = g6;
+}
+
+function calcFromGrid() {
+  const g = document.getElementById('g-grid-in').value.toUpperCase().trim();
+  if (g.length < 4) { alert('Ingresá al menos 4 caracteres'); return; }
+  const pos = gridToLatLon(g);
+  if (!pos) { alert('Grid inválido'); return; }
+  const z = getZones(pos.lat, pos.lon);
+  const f = fieldName(pos.lat, pos.lon);
+  document.getElementById('g-lat-out').textContent  = pos.lat.toFixed(4) + '°';
+  document.getElementById('g-lon-out').textContent  = pos.lon.toFixed(4) + '°';
+  document.getElementById('g-cq2').textContent  = 'Zona ' + z.cq;
+  document.getElementById('g-itu2').textContent = 'Zona ' + z.itu;
+  document.getElementById('g-field2').textContent = f + ' — ' + fieldDesc(f);
+  document.getElementById('g-maps-link2').href = `https://www.google.com/maps?q=${pos.lat},${pos.lon}`;
+  document.getElementById('g-res-grid').style.display = '';
+}
+
+function calcDist() {
+  const g1 = document.getElementById('d-grid1').value.trim();
+  const g2 = document.getElementById('d-grid2').value.trim();
+  if (g1.length < 4 || g2.length < 4) { alert('Ingresá ambos grids'); return; }
+  const p1 = gridToLatLon(g1), p2 = gridToLatLon(g2);
+  if (!p1||!p2) { alert('Grid inválido'); return; }
+  const km  = Math.round(haversine(p1.lat,p1.lon,p2.lat,p2.lon));
+  const brg = Math.round(bearing(p1.lat,p1.lon,p2.lat,p2.lon));
+  const el  = document.getElementById('d-result');
+  el.innerHTML = `<span>${km.toLocaleString('es-AR')} km</span> · ${brg}° (${bearingLabel(brg)})`;
+  el.style.display = '';
+}
+
+function fieldDesc(f) {
+  const descs = {
+    FF:'Sur de Sudamérica', FG:'Brasil / Bolivia', GF:'Patagonia / Falklands',
+    GG:'Brasil central', EF:'Pacífico SE', FH:'Paraguay / NE Argentina',
+    FE:'Océano Pacífico SE',
+  };
+  return descs[f] || '';
+}
+
+function useGridInForm() {
+  const g6 = document.getElementById('g-grid6').textContent;
+  if (g6 && g6 !== '—') {
+    document.getElementById('f-grid').value = g6;
+    redraw();
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Helpers comunes
+// ─────────────────────────────────────────────────────────────────────────────
+function setup(id,W,H,S) {
+  const cv=document.getElementById(id);
+  cv.width=W*S; cv.height=H*S; cv.style.width=W+'px'; cv.style.height=H+'px'; return cv;
+}
+function rrect(ctx,x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.lineTo(x+w-r,y);ctx.quadraticCurveTo(x+w,y,x+w,y+r);ctx.lineTo(x+w,y+h-r);ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);ctx.lineTo(x+r,y+h);ctx.quadraticCurveTo(x,y+h,x,y+h-r);ctx.lineTo(x,y+r);ctx.quadraticCurveTo(x,y,x+r,y);ctx.closePath();}
+function rrectLeft(ctx,x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.lineTo(x+w,y);ctx.lineTo(x+w,y+h);ctx.lineTo(x+r,y+h);ctx.quadraticCurveTo(x,y+h,x,y+h-r);ctx.lineTo(x,y+r);ctx.quadraticCurveTo(x,y,x+r,y);ctx.closePath();}
+function star(ctx,cx,cy,sp,ro,ri){let a=-Math.PI/2,st=Math.PI/sp;ctx.beginPath();ctx.moveTo(cx+Math.cos(a)*ro,cy+Math.sin(a)*ro);for(let i=0;i<sp;i++){a+=st;ctx.lineTo(cx+Math.cos(a)*ri,cy+Math.sin(a)*ri);a+=st;ctx.lineTo(cx+Math.cos(a)*ro,cy+Math.sin(a)*ro);}ctx.closePath();ctx.fill();}
+function waves(ctx,cx,cy,n,color,gap){ctx.save();ctx.strokeStyle=color;ctx.lineWidth=2;for(let i=1;i<=n;i++){ctx.globalAlpha=(n-i+1)/n*.7;ctx.beginPath();ctx.arc(cx,cy,i*gap,-Math.PI*.55,Math.PI*.55);ctx.stroke();}ctx.globalAlpha=1;ctx.restore();}
+function line(ctx,x1,y1,x2,y2){ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();}
+function starfield(ctx,W,H,n,seed){let r=seed;const rng=()=>{r=(r*1664525+1013904223)&0xffffffff;return(r>>>0)/0xffffffff;};for(let i=0;i<n;i++){ctx.fillStyle=`rgba(255,255,255,${.1+rng()*.5})`;ctx.beginPath();ctx.arc(rng()*W,rng()*H,rng()*1.5+.3,0,Math.PI*2);ctx.fill();}}
+function drawAntenna(ctx,x,baseY,h){ctx.save();ctx.strokeStyle='rgba(255,255,255,.06)';ctx.lineWidth=3;line(ctx,x,baseY,x,baseY-h);const elems=[.18,.34,.50,.65,.78,.88],lens=[h*.60,h*.46,h*.34,h*.24,h*.16,h*.10];for(let i=0;i<elems.length;i++){const ey=baseY-h*elems[i],hw=lens[i]/2;line(ctx,x-hw,ey,x+hw,ey);}ctx.restore();}
+function drawBarcode(ctx,x,y,w,h,data){const enc={'0':[3,2,1,1],'1':[2,2,2,1],'2':[2,1,2,2],'3':[1,4,1,1],'4':[1,1,3,2],'5':[1,2,3,1],'6':[1,1,1,4],'7':[1,3,1,2],'8':[1,2,1,3],'9':[3,1,2,1]};let bars=[2,1,1,2,3,1];for(const c of data.replace(/\D/g,'')) bars.push(...(enc[c]||[2,2,1,2]),1);bars.push(2,3,3,1,1,2);const unit=(w-8)/bars.reduce((s,v)=>s+v,0);let px=x+4,black=true;for(const b of bars){if(black){ctx.fillStyle='#1e293b';ctx.fillRect(px,y,b*unit,h);}px+=b*unit;black=!black;}}
+
+function doDownload(type) {
+  const d=getData();
+  const fns={plate:drawPlate,qsl:drawQSL,idcard:drawIDCard,banner:drawBanner};
+  const ids={plate:'canvas-plate',qsl:'canvas-qsl',idcard:'canvas-idcard',banner:'canvas-banner'};
+  const sfx={plate:'patente',qsl:'qsl-header',idcard:'id-card',banner:'banner-redes'};
+  fns[type]?.(d); dl(document.getElementById(ids[type]),(d.cs||'callsign')+'-'+sfx[type]+'.png');
+}
+function dl(canvas,filename){const a=document.createElement('a');a.href=canvas.toDataURL('image/png');a.download=filename;a.click();}
+
+document.fonts.ready.then(()=>redraw());
+</script>
+</body>
+</html>
